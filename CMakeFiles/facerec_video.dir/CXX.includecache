@@ -1,0 +1,26 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/josh/git/LipReader/facerec_video.cpp
+face.hpp
+-
+highgui.hpp
+-
+imgproc.hpp
+-
+objdetect.hpp
+-
+opencv2/opencv.hpp
+/home/josh/git/LipReader/opencv2/opencv.hpp
+iostream
+-
+fstream
+-
+sstream
+-
+

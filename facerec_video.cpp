@@ -51,6 +51,7 @@ int main(int argc, const char *argv[]) {
 
 	int im_width = 480;
 	int im_height = 560;
+	int numFrameHistory = 5;
 
 		//Create haar cascade
 	CascadeClassifier haar_cascade;
@@ -66,6 +67,9 @@ int main(int argc, const char *argv[]) {
 	Rect lips(100, 400, 300, im_height - 410);
 	// Holds the current frame from the Video device:
 	Mat frame;
+	// Vector to hold 'numframeHistory' most recent faces
+	// Used to stabilize the computers idea of where the face is
+	std::vector<Rect> faceHistory;
 	for(;;) {
 		cap >> frame;
 		// Clone the current frame:
@@ -80,26 +84,60 @@ int main(int argc, const char *argv[]) {
 		// faces. Now we'll get the faces, make a prediction and
 		// annotate it in the video. Cool or what?
 		Mat face_resized;
-		for(int i = 0; i < faces.size(); i++) {
-			// Process face by face:
-			Rect face_i = faces[i];
-			// Crop the face from the image. So simple with OpenCV C++:
-			Mat face = gray(face_i);
-			// Resizing the face is necessary for Eigenfaces and Fisherfaces. You can easily
-			// verify this, by reading through the face recognition tutorial coming with OpenCV.
-			// Resizing IS NOT NEEDED for Local Binary Patterns Histograms, so preparing the
-			// input data really depends on the algorithm used.
-			//
-			// I strongly encourage you to play around with the algorithms. See which work best
-			// in your scenario, LBPH should always be a contender for robust face recognition.
-			//
-			// Since I am showing the Fisherfaces algorithm here, I also show how to resize the
-			// face you have just found:
-			cv::resize(face, face_resized, Size(im_width, im_height), 1.0, 1.0, INTER_CUBIC);
-			// Now perform the prediction, see how easy that is:
-			// First of all draw a green rectangle around the detected face:
-			rectangle(original, face_i, CV_RGB(0, 255,0), 1);
+
+		// Get most prominent face from 'faces'
+		Rect face(0,0,0,0);
+		for (int i = 0; i<faces.size(); i++) {
+			if (faces[i].area() > face.area()) {
+				face = faces[i];
+			}
 		}
+		// Add to list of faces
+		faceHistory.push_back(face);
+		// If more than 'numFrameHistory' are stored, remove one
+		if (faceHistory.size() > numFrameHistory) {
+			faceHistory.erase(faceHistory.begin());
+		}
+		// Find average bottom right and top left corners of the faces stored
+		int brx, bry, tlx, tly;
+		brx = bry = tlx = tly = 0;
+		for (int i = 0; i < faceHistory.size(); i++) {
+			Point br = faceHistory[i].br();
+			Point tl = faceHistory[i].tl();
+			brx += br.x;
+			bry += br.y;
+			tlx += tl.x;
+			tly += tl.y;
+		}
+		if (faceHistory.size() > 0) {
+			brx /= faceHistory.size();
+			bry /= faceHistory.size();
+			tlx /= faceHistory.size();
+			tly /= faceHistory.size();
+		}
+		// Create the avg revtangle
+		if (brx <= tlx) brx = tlx + 1;
+		if (bry <= tly) bry = tly + 1;
+		Rect avg_face(tlx, tly, brx - tlx, bry - tly);
+		//if (faceHistory.size() > 0)
+			//avg_face = faceHistory[0];
+		// Crop the face from the image. So simple with OpenCV C++:
+		Mat gface = gray(avg_face);
+		// Resizing the face is necessary for Eigenfaces and Fisherfaces. You can easily
+		// verify this, by reading through the face recognition tutorial coming with OpenCV.
+		// Resizing IS NOT NEEDED for Local Binary Patterns Histograms, so preparing the
+		// input data really depends on the algorithm used.
+		//
+		// I strongly encourage you to play around with the algorithms. See which work best
+		// in your scenario, LBPH should always be a contender for robust face recognition.
+		//
+		// Since I am showing the Fisherfaces algorithm here, I also show how to resize the
+		// face you have just found:
+		cv::resize(gface, face_resized, Size(im_width, im_height), 1.0, 1.0, INTER_CUBIC);
+		// Now perform the prediction, see how easy that is:
+		// First of all draw a green rectangle around the detected face:
+		rectangle(original, avg_face, CV_RGB(0, 255,0), 1);
+
 		// Show the result:
 		imshow("face_recognizer", original);
 		if (face_resized.data) {

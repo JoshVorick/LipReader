@@ -17,6 +17,14 @@ objdetect.hpp
 -
 opencv2/opencv.hpp
 /home/josh/git/LipReader/opencv2/opencv.hpp
+opencv2/features2d/features2d.hpp
+/home/josh/git/LipReader/opencv2/features2d/features2d.hpp
+opencv2/nonfree/features2d.hpp
+/home/josh/git/LipReader/opencv2/nonfree/features2d.hpp
+opencv2/highgui/highgui.hpp
+/home/josh/git/LipReader/opencv2/highgui/highgui.hpp
+opencv2/nonfree/nonfree.hpp
+/home/josh/git/LipReader/opencv2/nonfree/nonfree.hpp
 iostream
 -
 fstream

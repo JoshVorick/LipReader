@@ -23,6 +23,10 @@
 #include <objdetect.hpp>
 */
 #include "opencv2/opencv.hpp"
+#include "opencv2/features2d/features2d.hpp"
+#include "opencv2/nonfree/features2d.hpp"
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/nonfree/nonfree.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -59,7 +63,7 @@ int main(int argc, const char *argv[]) {
 		return -1;
 	}
 	// Rectangle of where lips are relative to face
-	Rect lips(100, 420, 300, im_height - 420);
+	Rect lips(100, 400, 300, im_height - 410);
 	// Holds the current frame from the Video device:
 	Mat frame;
 	for(;;) {
@@ -99,8 +103,22 @@ int main(int argc, const char *argv[]) {
 		// Show the result:
 		imshow("face_recognizer", original);
 		if (face_resized.data) {
+			// Show just the resized face
 			imshow("face", face_resized);
+			// Show just the lips
 			imshow("lips", face_resized(lips));
+
+			// Find lips' features
+			SurfFeatureDetector detector( 100 );
+			std::vector<KeyPoint> keyPoints;
+
+			detector.detect( face_resized(lips), keyPoints );
+
+			Mat imgKeyPoints;
+
+			drawKeypoints( face_resized(lips), keyPoints, imgKeyPoints, Scalar::all(-1), DrawMatchesFlags::DEFAULT );
+
+			imshow("features", imgKeyPoints);
 		}
 		// And display it:
 		char key = (char) waitKey(20);

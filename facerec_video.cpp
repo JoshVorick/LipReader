@@ -58,6 +58,8 @@ int main(int argc, const char *argv[]) {
 		cerr << "Capture Device ID " << deviceId << "cannot be opened." << endl;
 		return -1;
 	}
+	// Rectangle of where lips are relative to face
+	Rect lips(100, 420, 300, im_height - 420);
 	// Holds the current frame from the Video device:
 	Mat frame;
 	for(;;) {
@@ -73,6 +75,7 @@ int main(int argc, const char *argv[]) {
 		// At this point you have the position of the faces in
 		// faces. Now we'll get the faces, make a prediction and
 		// annotate it in the video. Cool or what?
+		Mat face_resized;
 		for(int i = 0; i < faces.size(); i++) {
 			// Process face by face:
 			Rect face_i = faces[i];
@@ -88,7 +91,6 @@ int main(int argc, const char *argv[]) {
 			//
 			// Since I am showing the Fisherfaces algorithm here, I also show how to resize the
 			// face you have just found:
-			Mat face_resized;
 			cv::resize(face, face_resized, Size(im_width, im_height), 1.0, 1.0, INTER_CUBIC);
 			// Now perform the prediction, see how easy that is:
 			// First of all draw a green rectangle around the detected face:
@@ -96,6 +98,10 @@ int main(int argc, const char *argv[]) {
 		}
 		// Show the result:
 		imshow("face_recognizer", original);
+		if (face_resized.data) {
+			imshow("face", face_resized);
+			imshow("lips", face_resized(lips));
+		}
 		// And display it:
 		char key = (char) waitKey(20);
 		// Exit this loop on escape:

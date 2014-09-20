@@ -36,6 +36,9 @@ using namespace cv;
 //using namespace cv::face;
 using namespace std;
 
+const int numFrameHistory = 5;    // Used to stabalize rectangle around face
+const int numFeatureHistory = 18; // Used to guess which sound is being made
+
 // Compare key points by location
 // Sorts top to bottom and left to right (I think)
 bool compKeyPointsLoc(KeyPoint a, KeyPoint b) {
@@ -95,7 +98,6 @@ int main(int argc, const char *argv[]) {
 
 	int im_width = 480;
 	int im_height = 560;
-	int numFrameHistory = 5;
 	int framesCompleted = 0;
 
 		//Create haar cascade
@@ -188,6 +190,9 @@ int main(int argc, const char *argv[]) {
 
 	faceHistory.clear();
 
+	// Vector of vectors to story features of past frames
+	std::vector<std::vector<float> > featureHistory;
+
 	VideoCapture capCam(0);
 	capCam >> frame;
 	while(frame.data) {
@@ -238,20 +243,9 @@ int main(int argc, const char *argv[]) {
 		if (brx <= tlx) brx = tlx + 1;
 		if (bry <= tly) bry = tly + 1;
 		Rect avg_face(tlx, tly, brx - tlx, bry - tly);
-		//if (faceHistory.size() > 0)
-			//avg_face = faceHistory[0];
-		// Crop the face from the image. So simple with OpenCV C++:
+		// Crop the face from the image.
 		Mat gface = gray(avg_face);
-		// Resizing the face is necessary for Eigenfaces and Fisherfaces. You can easily
-		// verify this, by reading through the face recognition tutorial coming with OpenCV.
-		// Resizing IS NOT NEEDED for Local Binary Patterns Histograms, so preparing the
-		// input data really depends on the algorithm used.
-		//
-		// I strongly encourage you to play around with the algorithms. See which work best
-		// in your scenario, LBPH should always be a contender for robust face recognition.
-		//
-		// Since I am showing the Fisherfaces algorithm here, I also show how to resize the
-		// face you have just found:
+		//Standardize image size
 		cv::resize(frame(avg_face), face_resized, Size(im_width, im_height), 1.0, 1.0, INTER_CUBIC);
 		// Now perform the prediction, see how easy that is:
 		// First of all draw a green rectangle around the detected face:
@@ -260,22 +254,23 @@ int main(int argc, const char *argv[]) {
 		// Show the result:
 		imshow("face_recognizer", original);
 		if (face_resized.data) {
-			// Show just the resized face
-			// imshow("face", face_resized);
-			// Show just the lips
-			// imshow("lips", face_resized(lips));
-
-			// Find lips' features
+			//Create feature detector
 			SurfFeatureDetector detector( 200 );
 			std::vector<KeyPoint> keyPoints;
 
 			detector.detect( face_resized(lips), keyPoints );
-			std::sort(keyPoints.begin(), keyPoints.end(), compKeyPointsSize);
 
 			Mat imgKeyPoints;
 
+			// Draw features to image
 			drawKeypoints( face_resized(lips), keyPoints, imgKeyPoints, Scalar::all(-1), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+			// Show image
 			imshow("features", imgKeyPoints);
+
+			featureHistory.push_back(convertToFloatArray(keyPoints));
+			if (featureHistory.size() > numFeatureHistory) {
+				featureHistory.erase(featureHistory.begin());
+			}
 		}
 		// And display it:
 		char key = (char) waitKey(20);

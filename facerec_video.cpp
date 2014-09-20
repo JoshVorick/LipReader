@@ -27,6 +27,7 @@
 #include "opencv2/nonfree/features2d.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/nonfree/nonfree.hpp"
+#include "helperFunctions.cpp"
 
 #include <iostream>
 #include <fstream>
@@ -38,47 +39,6 @@ using namespace std;
 
 const int numFrameHistory = 5;    // Used to stabalize rectangle around face
 const int numFeatureHistory = 18; // Used to guess which sound is being made
-
-// Compare key points by location
-// Sorts top to bottom and left to right (I think)
-bool compKeyPointsLoc(KeyPoint a, KeyPoint b) {
-	if (a.pt.x < b.pt.x)
-		return true;
-	if (a.pt.x == b.pt.x && a.pt.y < b.pt.y)
-		return true;
-	return false;
-}
-
-// Compare key points based on size
-// Biggest first, smallest last
-bool compKeyPointsSize(KeyPoint a, KeyPoint b) {
-	return a.size > b.size;
-}
-
-std::vector<float> convertToFloatArray(std::vector<KeyPoint> pts) {
-	// Trim down to the 80 biggest features
-	if (pts.size() > 20) {
-		std::sort(pts.begin(), pts.end(), compKeyPointsSize);
-		pts.erase(pts.begin() + 20, pts.end());
-	}
-	//Sort by location to try and standardize their order
-	std::sort(pts.begin(), pts.end(), compKeyPointsLoc);
-	
-	std::vector<float> arr;
-
-	for(int i=0; i<pts.size(); i++) {
-		arr.push_back( pts[i].pt.x );
-		arr.push_back( pts[i].pt.y );
-		arr.push_back( pts[i].size );
-		arr.push_back( pts[i].angle );
-	}
-
-	//Make the vector 80 long if it isn't already
-	while (arr.size() < 80) {
-		arr.push_back(0);
-	}
-	return arr;
-}
 
 int main(int argc, const char *argv[]) {
 	// Check for valid command line arguments, print usage
@@ -115,7 +75,7 @@ int main(int argc, const char *argv[]) {
 	Rect lips(120, 395, 240, im_height - 405);
 
 	// Vector of vectors to hold the features for the "f" sound (F1.avi)
-	std::vector<std::vector<float> > fSound;
+	std::vector<std::vector<KeyPoint> > fSound;
 
 	// Holds the current frame from the Video device:
 	Mat frame;
@@ -176,7 +136,10 @@ int main(int argc, const char *argv[]) {
 			std::vector<KeyPoint> keyPoints;
 
 			detector.detect( face_resized(lips), keyPoints );
-			fSound.push_back(convertToFloatArray(keyPoints));
+			if (fSound.size() > 0)
+				fSound.push_back(alignNewFeatures(fSound[fSound.size()-1], keyPoints));
+			else
+				fSound.push_back(keyPoints);
 		}
 		// And display it:
 		char key = (char) waitKey(1);
@@ -191,7 +154,7 @@ int main(int argc, const char *argv[]) {
 	faceHistory.clear();
 
 	// Vector of vectors to story features of past frames
-	std::vector<std::vector<float> > featureHistory;
+	std::vector<std::vector<KeyPoint> > featureHistory;
 
 	VideoCapture capCam(0);
 	capCam >> frame;
@@ -267,10 +230,17 @@ int main(int argc, const char *argv[]) {
 			// Show image
 			imshow("features", imgKeyPoints);
 
-			featureHistory.push_back(convertToFloatArray(keyPoints));
-			if (featureHistory.size() > numFeatureHistory) {
-				featureHistory.erase(featureHistory.begin());
+			if (featureHistory.size() > 0) {
+				featureHistory.push_back(alignNewFeatures(featureHistory[featureHistory.size()-1], keyPoints));
+				if (featureHistory.size() > numFeatureHistory) {
+					featureHistory.erase(featureHistory.begin());
+				}
 			}
+			else 
+				featureHistory.push_back(keyPoints);
+
+			printf("x: %f\ty: %f fH: %i\tfH[0]: %i\n", featureHistory[0][0].pt.x, featureHistory[0][0].pt.y, featureHistory.size(), featureHistory[0].size());
+			// compareFeatureVectorVectors(featureHistory, fSound);
 		}
 		// And display it:
 		char key = (char) waitKey(20);

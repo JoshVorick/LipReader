@@ -36,6 +36,14 @@ using namespace cv;
 //using namespace cv::face;
 using namespace std;
 
+bool compKeyPoints(KeyPoint a, KeyPoint b) {
+	if (a.pt.x < b.pt.x)
+		return true;
+	if (a.pt.x == b.pt.x && a.pt.y < b.pt.y)
+		return true;
+	return false;
+}
+
 int main(int argc, const char *argv[]) {
 	// Check for valid command line arguments, print usage
 	// if no arguments were given.
@@ -64,7 +72,7 @@ int main(int argc, const char *argv[]) {
 		return -1;
 	}
 	// Rectangle of where lips are relative to face
-	Rect lips(100, 400, 300, im_height - 410);
+	Rect lips(120, 395, 240, im_height - 405);
 	// Holds the current frame from the Video device:
 	Mat frame;
 	// Vector to hold 'numframeHistory' most recent faces
@@ -133,7 +141,7 @@ int main(int argc, const char *argv[]) {
 		//
 		// Since I am showing the Fisherfaces algorithm here, I also show how to resize the
 		// face you have just found:
-		cv::resize(gface, face_resized, Size(im_width, im_height), 1.0, 1.0, INTER_CUBIC);
+		cv::resize(frame(avg_face), face_resized, Size(im_width, im_height), 1.0, 1.0, INTER_CUBIC);
 		// Now perform the prediction, see how easy that is:
 		// First of all draw a green rectangle around the detected face:
 		rectangle(original, avg_face, CV_RGB(0, 255,0), 1);
@@ -142,19 +150,20 @@ int main(int argc, const char *argv[]) {
 		imshow("face_recognizer", original);
 		if (face_resized.data) {
 			// Show just the resized face
-			imshow("face", face_resized);
+			// imshow("face", face_resized);
 			// Show just the lips
-			imshow("lips", face_resized(lips));
+			// imshow("lips", face_resized(lips));
 
 			// Find lips' features
-			SurfFeatureDetector detector( 100 );
+			SurfFeatureDetector detector( 200 );
 			std::vector<KeyPoint> keyPoints;
 
 			detector.detect( face_resized(lips), keyPoints );
+			std::sort(keyPoints.begin(), keyPoints.end(), compKeyPoints);
 
 			Mat imgKeyPoints;
 
-			drawKeypoints( face_resized(lips), keyPoints, imgKeyPoints, Scalar::all(-1), DrawMatchesFlags::DEFAULT );
+			drawKeypoints( face_resized(lips), keyPoints, imgKeyPoints, Scalar::all(-1), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
 
 			imshow("features", imgKeyPoints);
 		}

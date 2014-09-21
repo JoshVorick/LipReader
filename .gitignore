@@ -1,4 +1,5 @@
 facerec_video
+*.swp
 
 # Compiled Object files
 *.slo

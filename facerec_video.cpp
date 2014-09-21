@@ -152,6 +152,7 @@ int main(int argc, const char *argv[]) {
 	}
 
 	faceHistory.clear();
+	fSound = trimBadFeatures(fSound);
 
 	// Vector of vectors to story features of past frames
 	std::vector<std::vector<KeyPoint> > featureHistory;
@@ -218,17 +219,10 @@ int main(int argc, const char *argv[]) {
 		imshow("face_recognizer", original);
 		if (face_resized.data) {
 			//Create feature detector
-			SurfFeatureDetector detector( 200 );
+			SurfFeatureDetector detector( 100 );
 			std::vector<KeyPoint> keyPoints;
 
 			detector.detect( face_resized(lips), keyPoints );
-
-			Mat imgKeyPoints;
-
-			// Draw features to image
-			drawKeypoints( face_resized(lips), keyPoints, imgKeyPoints, Scalar::all(-1), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-			// Show image
-			imshow("features", imgKeyPoints);
 
 			if (featureHistory.size() > 0) {
 				featureHistory.push_back(alignNewFeatures(featureHistory[featureHistory.size()-1], keyPoints));
@@ -240,7 +234,21 @@ int main(int argc, const char *argv[]) {
 				featureHistory.push_back(keyPoints);
 
 			printf("x: %f\ty: %f fH: %i\tfH[0]: %i\n", featureHistory[0][0].pt.x, featureHistory[0][0].pt.y, featureHistory.size(), featureHistory[0].size());
-			// compareFeatureVectorVectors(featureHistory, fSound);
+			std::vector<std::vector<KeyPoint> > temp = trimBadFeatures(featureHistory);
+
+			Mat imgKeyPoints, imgTrimmed, imgSorted;
+			// Draw features to images
+			drawKeypoints( face_resized(lips), keyPoints, imgKeyPoints, Scalar::all(-1), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+			if (temp.size() > 0) {
+				drawKeypoints( face_resized(lips), temp[0], imgTrimmed, Scalar::all(-1), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+				temp = sortFeatures(temp);
+				printf("x: %f\ty: %f fH: %i\tfH[0]: %i\n\n", temp[0][0].pt.x, temp[0][0].pt.y, temp.size(), temp[0].size());
+				drawKeypoints( face_resized(lips), temp[0], imgSorted, Scalar::all(-1), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+				imshow("trimmed", imgTrimmed);
+				imshow("sorted", imgSorted);
+			}
+			// Show image
+			imshow("features", imgKeyPoints);
 		}
 		// And display it:
 		char key = (char) waitKey(20);

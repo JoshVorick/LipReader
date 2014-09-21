@@ -91,7 +91,7 @@ std::vector<KeyPoint> alignNewFeatures(std::vector<KeyPoint> oldF, std::vector<K
 		}
 		// If closest is close enough (such that it's probably the same feature)
 		// Add it to the output vector and remove it from newF
-		if (minDist < 5) {
+		if (minDist < 20) {
 			outF.push_back(closest);
 			newF.erase(newF.begin() + indexClosest);
 		} else if (oldF[i].size == 0 && indexClosest > -1) { // If it was a placeholder feature last frame
@@ -112,6 +112,84 @@ std::vector<KeyPoint> alignNewFeatures(std::vector<KeyPoint> oldF, std::vector<K
 	}
 	for (int i=0; i<newF.size(); i++) {
 		outF.push_back(newF[i]);
+	}
+	return outF;
+}
+
+// Trims the features that aren't apparent thoughout most frames
+std::vector<std::vector<KeyPoint> > trimBadFeatures(std::vector<std::vector<KeyPoint> > arr) {
+	std::vector<std::vector<KeyPoint> > outF;
+
+	if (arr.size() < 1)
+		return outF;
+	// First make it a nice rectangle by adding filler points
+	// This makes trimming it easier/neater
+	int maxLen = arr[arr.size() - 1].size();
+	for (int i=0; i < arr.size(); i++) {
+		while (arr[i].size() < maxLen) {
+			KeyPoint k(0,0,0);
+			arr[i].push_back(k);
+		}
+	}
+
+	// Now we start firguring which features to keep
+	for (int j=0; j < maxLen; j++) {
+		// Loop through one feature across all its frames to see if it persists
+		int numAppearances = 0;
+		KeyPoint kp = arr[0][j];
+		for (int i=0; i < arr.size(); i++) {
+			if (distFeature(kp, arr[i][j]) < 20 && arr[i][j].size > 0) {
+				numAppearances++;
+			}
+			kp = arr[i][j];
+		}
+		// If the feature is a good one, add it to the output
+		if (numAppearances > arr.size() * .5){
+			for (int i=0; i < arr.size(); i++) {
+				if (outF.size() <= i) {
+					std::vector<KeyPoint> kpArr;
+					kpArr.push_back(arr[i][j]);
+					outF.insert(outF.begin(), kpArr);
+				} else {
+					outF[i].push_back(arr[i][j]);
+				}
+			}
+		}
+	}
+	return outF;
+}
+
+// Sorts the array while keeping features aligned
+// Yes I know its an insertion sort.
+// If that bothers you, make a Pull Request
+std::vector<std::vector<KeyPoint> > sortFeatures(std::vector<std::vector<KeyPoint> > arr) {
+	std::vector<std::vector<KeyPoint> > outF;
+
+	if (arr.size() < 1 || arr[0].size() < 1)
+		return outF;
+
+	// Initialize output vector to be right number of frames
+	for (int i=0; i < arr.size(); i++) {
+		std::vector<KeyPoint> kpArr;
+		outF.push_back(kpArr);
+	}
+	// Find element that should go last, add it, repeat
+	while (arr[0].size() > 0) {
+		int indexOfMin = 0;
+		KeyPoint smallest = arr[0][0];
+		// Find which is smallest
+		for (int i=0; i < arr[0].size(); i++) {
+			if (arr[0][i].pt.x < smallest.pt.x || 
+					(arr[0][i].pt.x == smallest.pt.x && arr[0][i].pt.y < smallest.pt.y)) {
+				indexOfMin = i;
+				smallest = arr[0][i];
+			}
+		}
+		// Insert elements into 'outF' and remove them from 'arr'
+		for (int i=0; i < arr.size(); i++) {
+			outF[i].push_back(arr[i][indexOfMin]);
+			arr[i].erase(arr[i].begin() + indexOfMin);
+		}
 	}
 	return outF;
 }

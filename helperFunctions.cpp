@@ -9,6 +9,10 @@
 using namespace cv;
 using namespace std;
 
+const double ANGLE_W = .3;
+const double SIZE_W = .3;
+const double DIST_W = .4;
+
 // Compare key points by location
 // Sorts top to bottom and left to right (I think)
 bool compKeyPointsLocY(KeyPoint a, KeyPoint b) {
@@ -204,8 +208,25 @@ int calcDiff(KeyPoint a, KeyPoint b) {
 	return dist + ds + da*10;
 }
 
+// Returns % accuracy of feed more or less
+// Uses |(theoretical - actual) / theoretical|
+double calcPerformance(KeyPoint lib, KeyPoint feed) {
+	double dist = calcDiff(lib, feed) / 20;
+	double size, angle;
+	if (lib.size != 0)
+		size = abs(lib.size - feed.size) / lib.size;
+	else
+		size = dist;
+	if (lib.angle != -1)
+		angle = abs(lib.angle - feed.angle) / lib.angle;
+	else
+		angle = dist;
+	return ANGLE_W*angle + SIZE_W*size + DIST_W*(1 - dist);
+}
+
 // Compare two matrices of features to see how similar they are
-int compareFeatures(std::vector<std::vector<KeyPoint> > lib, std::vector<std::vector<KeyPoint> > feed) {
+double compareFeatures(std::vector<std::vector<KeyPoint> > lib, std::vector<std::vector<KeyPoint> > feed) {
+#if 0
 	int diff = 0; // Keeps track of how similar the two vectors are
 	int numWrong = 0; //Keeps track of features that aren't in both
 
@@ -236,6 +257,37 @@ int compareFeatures(std::vector<std::vector<KeyPoint> > lib, std::vector<std::ve
 		}
 	}
 	return diff;
+#else
+	double performance = 0;
+	double maxPerformance = 0;
+
+	// Resize feed to be the same number of frames as lib
+	if (feed.size() > lib.size()) {
+		feed.erase(feed.begin(), feed.begin() + (feed.size() - lib.size() - 1));
+	}
+
+	if (lib.size() < 1 || feed.size() < 1)
+		return 0;
+	// Iterate through one array
+	// Find the distance feedetween each feature and its closest counterpart
+	for (int i=0; i < lib.size() && i < feed.size(); i++) {
+		for (int j=0; j < lib[i].size(); j++) {
+			// Find nearest feature from other array
+			int distMin = 10000;
+			KeyPoint nearest(0,0,0);
+			for (int k=0; k < feed[i].size(); k++) {
+				if (distFeature(lib[i][j], feed[i][k]) < distMin){
+					distMin = distFeature(lib[i][j], feed[i][k]);
+					nearest = feed[i][k];
+				}
+			}
+			if (distMin < 20)
+				performance += calcPerformance(lib[i][j], nearest);
+			maxPerformance++;
+		}
+	}
+	return performance / maxPerformance;
+#endif
 }
 
 Mat combineImages(std::vector<Mat> images) {

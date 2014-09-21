@@ -18,6 +18,9 @@ const int numFeatureHistory = 18; // Used to guess which sound is being made
 const int im_width = 480;
 const int im_height = 560;
 
+const int FEATURE_THRESHHOLD = 100;
+const int FRAME_BLUR = 4;
+
 // Returns the matric of features for the video
 std::vector<std::vector<KeyPoint> > getFeaturesFromVideo(string fileName, double threshhold, string haarPath) {
 	std::vector<std::vector<KeyPoint> > outF;
@@ -50,7 +53,7 @@ std::vector<std::vector<KeyPoint> > getFeaturesFromVideo(string fileName, double
 	capNone >> frame;
 	while(frame.data) {
 		frames.push_back(frame);
-		if (frames.size() > 4)
+		if (frames.size() > FRAME_BLUR)
 			frames.erase(frames.begin());
 
 		frame = combineImages(frames);
@@ -103,7 +106,7 @@ std::vector<std::vector<KeyPoint> > getFeaturesFromVideo(string fileName, double
 		cv::resize(frame(avg_face), face_resized, Size(im_width, im_height), 1.0, 1.0, INTER_CUBIC);
 
 		if (face_resized.data) {
-			SurfFeatureDetector detector( 100 );
+			SurfFeatureDetector detector( FEATURE_THRESHHOLD );
 			std::vector<KeyPoint> keyPoints;
 
 			detector.detect( face_resized(lips), keyPoints );
@@ -180,11 +183,11 @@ int main(int argc, const char *argv[]) {
 	std::vector<std::vector<KeyPoint> > featureHistory;
 
 	// Load webcam image
-	VideoCapture capCam(0);
+	VideoCapture capCam("TEST.avi");
 	capCam >> frame;
 	while(frame.data) {
 		frames.push_back(frame);
-		if (frames.size() > 4)
+		if (frames.size() > FRAME_BLUR)
 			frames.erase(frames.begin());
 
 		frame = combineImages(frames);
@@ -249,7 +252,7 @@ int main(int argc, const char *argv[]) {
 		imshow("face_recognizer", original);
 		if (face_resized.data) {
 			//Create feature detector
-			SurfFeatureDetector detector( 100 );
+			SurfFeatureDetector detector( FEATURE_THRESHHOLD );
 			std::vector<KeyPoint> keyPoints;
 
 			detector.detect( face_resized(lips), keyPoints );
@@ -280,16 +283,16 @@ int main(int argc, const char *argv[]) {
 				imshow("trimmed", imgTrimmed);
 
 				// Calc and print difference
-				int fDiff = compareFeatures(fSound, temp) / fSound.size();
-				int ooDiff = compareFeatures(ooSound, temp) / ooSound.size();
-				int noneDiff = compareFeatures(noSound, temp) / noSound.size();
+				double fDiff = 1 - compareFeatures(fSound, temp);
+				double ooDiff = 1 - compareFeatures(ooSound, temp);
+				double noneDiff = 1 - compareFeatures(noSound, temp);
 				if (noneDiff < fDiff && noneDiff < ooDiff)
 					printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 				else if(fDiff < ooDiff)
 					printf("ffffffffffffffffffffffffffffffffffffffffffffffffffffffff %i\n", (ooDiff - fDiff));
 				else
 					printf("oooooooooooooooooooooooooooooooooooooooooooooooooooooooo %i\n", (fDiff - ooDiff));
-				printf("size:%i\tdiff f: %i\tdiff oo: %i\tnodiff: %i\n", temp[0].size(), fDiff, ooDiff, noneDiff);
+				printf("size:%i\tdiff f: %.3f\tdiff oo: %.3f\tnodiff: %.3f\n", temp[0].size(), 1-fDiff, 1-ooDiff, 1-noneDiff);
 			}
 			// Show image
 			//imshow("features", imgKeyPoints);

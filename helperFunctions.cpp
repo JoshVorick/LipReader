@@ -117,7 +117,8 @@ std::vector<KeyPoint> alignNewFeatures(std::vector<KeyPoint> oldF, std::vector<K
 }
 
 // Trims the features that aren't apparent thoughout most frames
-std::vector<std::vector<KeyPoint> > trimBadFeatures(std::vector<std::vector<KeyPoint> > arr) {
+// THe threshhold is the percent of frames features must persist in
+std::vector<std::vector<KeyPoint> > trimBadFeatures(std::vector<std::vector<KeyPoint> > arr, double threshhold) {
 	std::vector<std::vector<KeyPoint> > outF;
 
 	if (arr.size() < 1)
@@ -144,7 +145,7 @@ std::vector<std::vector<KeyPoint> > trimBadFeatures(std::vector<std::vector<KeyP
 			kp = arr[i][j];
 		}
 		// If the feature is a good one, add it to the output
-		if (numAppearances > arr.size() * .5){
+		if (numAppearances > arr.size() * threshhold){
 			for (int i=0; i < arr.size(); i++) {
 				if (outF.size() <= i) {
 					std::vector<KeyPoint> kpArr;
@@ -204,26 +205,50 @@ int calcDiff(KeyPoint a, KeyPoint b) {
 }
 
 // Compare two matrices of features to see how similar they are
-int compareFeatures(std::vector<std::vector<KeyPoint> > a, std::vector<std::vector<KeyPoint> > b) {
+int compareFeatures(std::vector<std::vector<KeyPoint> > lib, std::vector<std::vector<KeyPoint> > feed) {
 	int diff = 0; // Keeps track of how similar the two vectors are
+	int numWrong = 0; //Keeps track of features that aren't in both
 
-	if (a.size() < 1 || b.size() < 1)
+	// Resize feed to be the same number of frames as lib
+	if (feed.size() > lib.size()) {
+		feed.erase(feed.begin(), feed.begin() + (feed.size() - lib.size() - 1));
+	}
+
+	if (lib.size() < 1 || feed.size() < 1)
 		return 10000000;
 	// Iterate through one array
-	// Find the distance between each feature and its closest counterpart
-	for (int i=0; i < a.size() && i < b.size(); i++) {
-		for (int j=0; j < a[i].size(); j++) {
+	// Find the distance feedetween each feature and its closest counterpart
+	for (int i=0; i < lib.size() && i < feed.size(); i++) {
+		for (int j=0; j < lib[i].size(); j++) {
 			// Find nearest feature from other array
-			int distMin = 100;
+			int distMin = 10000;
 			KeyPoint nearest(0,0,0);
-			for (int k=0; k < b[i].size(); k++) {
-				if (distFeature(a[i][j], b[i][k]) < distMin){
-					distMin = distFeature(a[i][j], b[i][k]);
-					nearest = b[i][k];
+			for (int k=0; k < feed[i].size(); k++) {
+				if (distFeature(lib[i][j], feed[i][k]) < distMin){
+					distMin = distFeature(lib[i][j], feed[i][k]);
+					nearest = feed[i][k];
 				}
 			}
-			diff += calcDiff(a[i][j], nearest);
+			if (distMin > 30)
+				diff += calcDiff(lib[i][j], nearest);
+			else
+				numWrong++;
 		}
 	}
 	return diff;
+}
+
+Mat combineImages(std::vector<Mat> images) {
+	assert(images.size() >= 1);
+
+#if 1
+	double weight = 1. / images.size();
+	Mat outImage = weight * images[0];
+	for (int i=1; i < images.size(); i++) {
+		outImage += weight * images[i];
+	}
+	return outImage;
+#else
+	return images[0];
+#endif
 }

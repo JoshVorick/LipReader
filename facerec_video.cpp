@@ -1,27 +1,3 @@
-/*
- * Copyright (c) 2011. Philipp Wagner <bytefish[at]gmx[dot]de>.
- * Released to public domain under terms of the BSD Simplified license.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *   * Redistributions of source code must retain the above copyright
- *	 notice, this list of conditions and the following disclaimer.
- *   * Redistributions in binary form must reproduce the above copyright
- *	 notice, this list of conditions and the following disclaimer in the
- *	 documentation and/or other materials provided with the distribution.
- *   * Neither the name of the organization nor the names of its contributors
- *	 may be used to endorse or promote products derived from this software
- *	 without specific prior written permission.
- *
- *   See <http://www.opensource.org/licenses/bsd-license>
- */
-
-/*#include <cv.h>
-#include <face.hpp>
-#include <highgui.hpp>
-#include <imgproc.hpp>
-#include <objdetect.hpp>
-*/
 #include "opencv2/opencv.hpp"
 #include "opencv2/features2d/features2d.hpp"
 #include "opencv2/nonfree/features2d.hpp"
@@ -39,51 +15,46 @@ using namespace std;
 
 const int numFrameHistory = 5;    // Used to stabalize rectangle around face
 const int numFeatureHistory = 18; // Used to guess which sound is being made
+const int im_width = 480;
+const int im_height = 560;
 
-int main(int argc, const char *argv[]) {
-	// Check for valid command line arguments, print usage
-	// if no arguments were given.
-	if (argc < 2) {
-		cout << "usage: " << argv[0] << " </path/to/haar_cascade> </path/to/csv.ext> </path/to/device id>" << endl;
-		cout << "\t </path/to/haar_cascade> -- Path to the Haar Cascade for face detection." << endl;
-		cout << "\t </path/to/video> -- (OPTIONAL) The path to video to decode. If no argument, will try to use webcam." << endl;
-		exit(1);
-	}
-	// Get the path to your CSV:
-	string fn_haar = string(argv[1]);
+// Returns the matric of features for the video
+std::vector<std::vector<KeyPoint> > getFeaturesFromVideo(string fileName, double threshhold, string haarPath) {
+	std::vector<std::vector<KeyPoint> > outF;
+
+	string fn_haar = haarPath;
 	string videoFileName;
-	int deviceId = 0;
-	 if (argc > 2)
-		videoFileName = argv[2];
 
-	int im_width = 480;
-	int im_height = 560;
 	int framesCompleted = 0;
 
-		//Create haar cascade
+	//Create haar cascade
 	CascadeClassifier haar_cascade;
 	haar_cascade.load(fn_haar);
-	// Get a handle to the Video device:
-	//VideoCapture cap(deviceId);
-	VideoCapture cap(videoFileName);
-	// Check if we can use this device at all:
-	if(!cap.isOpened()) {
-		cerr << "Capture Device ID " << deviceId << "cannot be opened." << endl;
-		return -1;
-	}
 	// Rectangle of where lips are relative to face
 	Rect lips(120, 395, 240, im_height - 405);
 
-	// Vector of vectors to hold the features for the "f" sound (F1.avi)
-	std::vector<std::vector<KeyPoint> > fSound;
-
 	// Holds the current frame from the Video device:
+	std::vector<Mat> frames;
 	Mat frame;
 	// Vector to hold 'numframeHistory' most recent faces
 	// Used to stabilize the computers idea of where the face is
 	std::vector<Rect> faceHistory;
-	cap >> frame;
+
+	// Get the video
+	VideoCapture capNone(fileName);
+	// Check if we can use this device at all:
+	if(!capNone.isOpened()) {
+		cout << "Couldn't open " << fileName << endl;
+		return outF;
+	}
+	capNone >> frame;
 	while(frame.data) {
+		frames.push_back(frame);
+		if (frames.size() > 4)
+			frames.erase(frames.begin());
+
+		frame = combineImages(frames);
+
 		// Clone the current frame:
 		Mat original = frame.clone();
 		// Convert the current frame to grayscale:
@@ -132,36 +103,92 @@ int main(int argc, const char *argv[]) {
 		cv::resize(frame(avg_face), face_resized, Size(im_width, im_height), 1.0, 1.0, INTER_CUBIC);
 
 		if (face_resized.data) {
-			SurfFeatureDetector detector( 200 );
+			SurfFeatureDetector detector( 100 );
 			std::vector<KeyPoint> keyPoints;
 
 			detector.detect( face_resized(lips), keyPoints );
-			if (fSound.size() > 0)
-				fSound.push_back(alignNewFeatures(fSound[fSound.size()-1], keyPoints));
+			if (outF.size() > 0)
+				outF.push_back(alignNewFeatures(outF[outF.size()-1], keyPoints));
 			else
-				fSound.push_back(keyPoints);
+				outF.push_back(keyPoints);
 		}
 		// And display it:
 		char key = (char) waitKey(1);
-		// Exit this loop on escape:
+		// Exit this loop on escapNonee:
 		if(key == 27)
 			break;
 		framesCompleted++;
 		printf("frame: %i\n", framesCompleted);
-		cap >> frame;
+		capNone >> frame;
 	}
 
 	faceHistory.clear();
-	fSound = trimBadFeatures(fSound);
-	fSound = sortFeatures(fSound);
+	outF = trimBadFeatures(outF, threshhold);
+	// outF = sortFeatures(outF);
+
+	return outF;
+}
+
+int main(int argc, const char *argv[]) {
+	// Check for valid command line arguments, print usage
+	// if no arguments were given.
+	if (argc < 2) {
+		cout << "usage: " << argv[0] << " </path/to/haar_cascade> </path/to/csv.ext> </path/to/device id>" << endl;
+		cout << "\t </path/to/haar_cascade> -- Path to the Haar Cascade for face detection." << endl;
+		cout << "\t </path/to/video> -- (OPTIONAL) The path to video to decode. If no argument, will try to use webcam." << endl;
+		exit(1);
+	}
+	// Get the path to your CSV:
+	string fn_haar = string(argv[1]);
+	string videoFileName;
+	int deviceId = 0;
+
+	int im_width = 480;
+	int im_height = 560;
+	int framesCompleted = 0;
+
+	//Create haar cascade
+	CascadeClassifier haar_cascade;
+	haar_cascade.load(fn_haar);
+	// Rectangle of where lips are relative to face
+	Rect lips(120, 395, 240, im_height - 405);
+
+	// Vector of vectors to hold the features for the "f" sound (F1.avi)
+	std::vector<std::vector<KeyPoint> > fSound, ooSound, noSound;
+
+	// Holds the current frame from the Video device:
+	// Array to hold past couple frames
+	// This way past frames can be blended so features will
+	// persist from frame to frame more reliably
+	std::vector<Mat> frames;
+	Mat frame;
+
+	// Vector to hold 'numframeHistory' most recent faces
+	// Used to stabilize the computers idea of where the face is
+	std::vector<Rect> faceHistory;
+
+	noSound = getFeaturesFromVideo("NONE.avi", 0.75, fn_haar);
+	printf("noSound size: %i\n", noSound[0].size());
+
+	fSound = getFeaturesFromVideo("F1.avi", 0.5, fn_haar);
 	printf("fSound size: %i\n", fSound[0].size());
+
+	ooSound = getFeaturesFromVideo("OO1.avi", 0.4, fn_haar);
+	printf("ooSound size: %i\n", ooSound[0].size());
 
 	// Vector of vectors to story features of past frames
 	std::vector<std::vector<KeyPoint> > featureHistory;
 
+	// Load webcam image
 	VideoCapture capCam(0);
 	capCam >> frame;
 	while(frame.data) {
+		frames.push_back(frame);
+		if (frames.size() > 4)
+			frames.erase(frames.begin());
+
+		frame = combineImages(frames);
+
 		// Clone the current frame:
 		Mat original = frame.clone();
 		// Convert the current frame to grayscale:
@@ -209,6 +236,7 @@ int main(int argc, const char *argv[]) {
 		if (brx <= tlx) brx = tlx + 1;
 		if (bry <= tly) bry = tly + 1;
 		Rect avg_face(tlx, tly, brx - tlx, bry - tly);
+
 		// Crop the face from the image.
 		Mat gface = gray(avg_face);
 		//Standardize image size
@@ -235,25 +263,36 @@ int main(int argc, const char *argv[]) {
 			else 
 				featureHistory.push_back(keyPoints);
 
-			// printf("x: %f\ty: %f fH: %i\tfH[0]: %i\n", featureHistory[0][0].pt.x, featureHistory[0][0].pt.y, featureHistory.size(), featureHistory[0].size());
-			std::vector<std::vector<KeyPoint> > temp = trimBadFeatures(featureHistory);
+			std::vector<std::vector<KeyPoint> > temp = trimBadFeatures(featureHistory, .7);
+			// If there aren't enough features for tracking, lower the threshhold
+			float threshhold = .65;
+			while (temp.size() < 1 || (temp[0].size() < 10 && threshhold > 0)) {
+				temp = trimBadFeatures(featureHistory, threshhold);
+				threshhold -= .05;
+			}
 
 			Mat imgKeyPoints, imgTrimmed, imgSorted;
 			// Draw features to images
 			drawKeypoints( face_resized(lips), keyPoints, imgKeyPoints, Scalar::all(-1), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
 			if (temp.size() > 0) {
 				drawKeypoints( face_resized(lips), temp[0], imgTrimmed, Scalar::all(-1), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-				temp = sortFeatures(temp);
-				// printf("x: %f\ty: %f fH: %i\tfH[0]: %i\n\n", temp[0][0].pt.x, temp[0][0].pt.y, temp.size(), temp[0].size());
 				drawKeypoints( face_resized(lips), temp[0], imgSorted, Scalar::all(-1), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
 				imshow("trimmed", imgTrimmed);
-				imshow("sorted", imgSorted);
 
 				// Calc and print difference
-				printf("size: %i\tdiff: %i\n", temp[0].size(), compareFeatures(temp, fSound));
+				int fDiff = compareFeatures(fSound, temp) / fSound.size();
+				int ooDiff = compareFeatures(ooSound, temp) / ooSound.size();
+				int noneDiff = compareFeatures(noSound, temp) / noSound.size();
+				if (noneDiff < fDiff && noneDiff < ooDiff)
+					printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+				else if(fDiff < ooDiff)
+					printf("ffffffffffffffffffffffffffffffffffffffffffffffffffffffff %i\n", (ooDiff - fDiff));
+				else
+					printf("oooooooooooooooooooooooooooooooooooooooooooooooooooooooo %i\n", (fDiff - ooDiff));
+				printf("size:%i\tdiff f: %i\tdiff oo: %i\tnodiff: %i\n", temp[0].size(), fDiff, ooDiff, noneDiff);
 			}
 			// Show image
-			imshow("features", imgKeyPoints);
+			//imshow("features", imgKeyPoints);
 		}
 		// And display it:
 		char key = (char) waitKey(20);

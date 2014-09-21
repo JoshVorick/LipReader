@@ -193,3 +193,37 @@ std::vector<std::vector<KeyPoint> > sortFeatures(std::vector<std::vector<KeyPoin
 	}
 	return outF;
 }
+
+// Returns how dissimilar two points are
+// Based on location, size, and angle
+int calcDiff(KeyPoint a, KeyPoint b) {
+	int dist = distFeature(a, b);
+	int ds = abs(a.size - b.size);
+	int da = abs(cos(a.angle) - cos(b.angle)); // Using cosine makes it so that 179 and -179 are close together
+	return dist + ds + da*10;
+}
+
+// Compare two matrices of features to see how similar they are
+int compareFeatures(std::vector<std::vector<KeyPoint> > a, std::vector<std::vector<KeyPoint> > b) {
+	int diff = 0; // Keeps track of how similar the two vectors are
+
+	if (a.size() < 1 || b.size() < 1)
+		return 10000000;
+	// Iterate through one array
+	// Find the distance between each feature and its closest counterpart
+	for (int i=0; i < a.size() && i < b.size(); i++) {
+		for (int j=0; j < a[i].size(); j++) {
+			// Find nearest feature from other array
+			int distMin = 100;
+			KeyPoint nearest(0,0,0);
+			for (int k=0; k < b[i].size(); k++) {
+				if (distFeature(a[i][j], b[i][k]) < distMin){
+					distMin = distFeature(a[i][j], b[i][k]);
+					nearest = b[i][k];
+				}
+			}
+			diff += calcDiff(a[i][j], nearest);
+		}
+	}
+	return diff;
+}

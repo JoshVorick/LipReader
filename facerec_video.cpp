@@ -153,6 +153,8 @@ int main(int argc, const char *argv[]) {
 
 	faceHistory.clear();
 	fSound = trimBadFeatures(fSound);
+	fSound = sortFeatures(fSound);
+	printf("fSound size: %i\n", fSound[0].size());
 
 	// Vector of vectors to story features of past frames
 	std::vector<std::vector<KeyPoint> > featureHistory;
@@ -233,7 +235,7 @@ int main(int argc, const char *argv[]) {
 			else 
 				featureHistory.push_back(keyPoints);
 
-			printf("x: %f\ty: %f fH: %i\tfH[0]: %i\n", featureHistory[0][0].pt.x, featureHistory[0][0].pt.y, featureHistory.size(), featureHistory[0].size());
+			// printf("x: %f\ty: %f fH: %i\tfH[0]: %i\n", featureHistory[0][0].pt.x, featureHistory[0][0].pt.y, featureHistory.size(), featureHistory[0].size());
 			std::vector<std::vector<KeyPoint> > temp = trimBadFeatures(featureHistory);
 
 			Mat imgKeyPoints, imgTrimmed, imgSorted;
@@ -242,10 +244,13 @@ int main(int argc, const char *argv[]) {
 			if (temp.size() > 0) {
 				drawKeypoints( face_resized(lips), temp[0], imgTrimmed, Scalar::all(-1), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
 				temp = sortFeatures(temp);
-				printf("x: %f\ty: %f fH: %i\tfH[0]: %i\n\n", temp[0][0].pt.x, temp[0][0].pt.y, temp.size(), temp[0].size());
+				// printf("x: %f\ty: %f fH: %i\tfH[0]: %i\n\n", temp[0][0].pt.x, temp[0][0].pt.y, temp.size(), temp[0].size());
 				drawKeypoints( face_resized(lips), temp[0], imgSorted, Scalar::all(-1), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
 				imshow("trimmed", imgTrimmed);
 				imshow("sorted", imgSorted);
+
+				// Calc and print difference
+				printf("size: %i\tdiff: %i\n", temp[0].size(), compareFeatures(temp, fSound));
 			}
 			// Show image
 			imshow("features", imgKeyPoints);

@@ -13,6 +13,19 @@ const double ANGLE_W = .3;
 const double SIZE_W = .3;
 const double DIST_W = .4;
 
+#define FEATURE_THRESHHOLD 120
+#define FRAME_BLUR 4
+
+enum {
+	NONE,
+	FF,
+	OO,
+	JJ,
+	MM,
+	TH
+};
+#define NUM_SOUNDS 6
+
 // Compare key points by location
 // Sorts top to bottom and left to right (I think)
 bool compKeyPointsLocY(KeyPoint a, KeyPoint b) {
@@ -293,14 +306,33 @@ double compareFeatures(std::vector<std::vector<KeyPoint> > lib, std::vector<std:
 Mat combineImages(std::vector<Mat> images) {
 	assert(images.size() >= 1);
 
-#if 1
 	double weight = 1. / images.size();
 	Mat outImage = weight * images[0];
 	for (int i=1; i < images.size(); i++) {
 		outImage += weight * images[i];
 	}
 	return outImage;
-#else
-	return images[0];
-#endif
+}
+
+void whichSound(double diffs[]) {
+	// Find what the highest value is
+	double highest = 0;
+	for (int i=0; i < NUM_SOUNDS; i++) {
+		if (diffs[i] > highest)
+			highest = diffs[i];
+	}
+	// Now figure out which letter has that value
+	if (highest == diffs[NONE]) {
+		printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+	} else if (highest == diffs[FF]) {
+		printf("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF\n");
+	} else if (highest == diffs[OO]) {
+		printf("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO\n");
+	} else if (highest == diffs[JJ]) {
+		printf("JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ\n");
+	} else if (highest == diffs[MM]) {
+		printf("MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM\n");
+	} else if (highest == diffs[TH]) {
+		printf("THTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTH\n");
+	}
 }

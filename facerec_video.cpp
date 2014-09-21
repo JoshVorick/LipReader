@@ -18,9 +18,6 @@ const int numFeatureHistory = 18; // Used to guess which sound is being made
 const int im_width = 480;
 const int im_height = 560;
 
-const int FEATURE_THRESHHOLD = 100;
-const int FRAME_BLUR = 4;
-
 // Returns the matric of features for the video
 std::vector<std::vector<KeyPoint> > getFeaturesFromVideo(string fileName, double threshhold, string haarPath) {
 	std::vector<std::vector<KeyPoint> > outF;
@@ -115,19 +112,25 @@ std::vector<std::vector<KeyPoint> > getFeaturesFromVideo(string fileName, double
 			else
 				outF.push_back(keyPoints);
 		}
-		// And display it:
+		Mat imgTrimmed;
+		std::vector<std::vector<KeyPoint> > temp = trimBadFeatures(outF, threshhold);
+		if (temp.size() > 0) {
+			drawKeypoints( face_resized(lips), temp[0], imgTrimmed, Scalar::all(-1), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+			imshow("trimmed", imgTrimmed);
+		}
 		char key = (char) waitKey(1);
 		// Exit this loop on escapNonee:
 		if(key == 27)
 			break;
+
 		framesCompleted++;
 		printf("frame: %i\n", framesCompleted);
+
 		capNone >> frame;
 	}
 
 	faceHistory.clear();
 	outF = trimBadFeatures(outF, threshhold);
-	// outF = sortFeatures(outF);
 
 	return outF;
 }
@@ -157,7 +160,7 @@ int main(int argc, const char *argv[]) {
 	Rect lips(120, 395, 240, im_height - 405);
 
 	// Vector of vectors to hold the features for the "f" sound (F1.avi)
-	std::vector<std::vector<KeyPoint> > fSound, ooSound, noSound;
+	std::vector<std::vector<KeyPoint> > sounds[NUM_SOUNDS];
 
 	// Holds the current frame from the Video device:
 	// Array to hold past couple frames
@@ -169,15 +172,25 @@ int main(int argc, const char *argv[]) {
 	// Vector to hold 'numframeHistory' most recent faces
 	// Used to stabilize the computers idea of where the face is
 	std::vector<Rect> faceHistory;
+	
 
-	noSound = getFeaturesFromVideo("NONE.avi", 0.75, fn_haar);
-	printf("noSound size: %i\n", noSound[0].size());
+	sounds[NONE] = getFeaturesFromVideo("NONE.avi", 0.75, fn_haar);
+	printf("sounds[NONE] size: %i\n", sounds[NONE][0].size());
 
-	fSound = getFeaturesFromVideo("F1.avi", 0.5, fn_haar);
-	printf("fSound size: %i\n", fSound[0].size());
+	sounds[FF] = getFeaturesFromVideo("F1.avi", 0.5, fn_haar);
+	printf("sounds[FF] size: %i\n", sounds[FF][0].size());
 
-	ooSound = getFeaturesFromVideo("OO1.avi", 0.4, fn_haar);
-	printf("ooSound size: %i\n", ooSound[0].size());
+	sounds[OO] = getFeaturesFromVideo("OO1.avi", 0.4, fn_haar);
+	printf("sounds[OO] size: %i\n", sounds[OO][0].size());
+
+	sounds[JJ] = getFeaturesFromVideo("J1.avi", 0., fn_haar);
+	printf("sounds[JJ] size: %i\n", sounds[JJ][0].size());
+
+	sounds[MM] = getFeaturesFromVideo("M1.avi", 0., fn_haar);
+	printf("sounds[MM] size: %i\n", sounds[MM][0].size());
+
+	sounds[TH] = getFeaturesFromVideo("TH1.avi", 0., fn_haar);
+	printf("sounds[TH] size: %i\n", sounds[TH][0].size());
 
 	// Vector of vectors to story features of past frames
 	std::vector<std::vector<KeyPoint> > featureHistory;
@@ -279,20 +292,18 @@ int main(int argc, const char *argv[]) {
 			drawKeypoints( face_resized(lips), keyPoints, imgKeyPoints, Scalar::all(-1), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
 			if (temp.size() > 0) {
 				drawKeypoints( face_resized(lips), temp[0], imgTrimmed, Scalar::all(-1), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-				drawKeypoints( face_resized(lips), temp[0], imgSorted, Scalar::all(-1), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
 				imshow("trimmed", imgTrimmed);
 
 				// Calc and print difference
-				double fDiff = 1 - compareFeatures(fSound, temp);
-				double ooDiff = 1 - compareFeatures(ooSound, temp);
-				double noneDiff = 1 - compareFeatures(noSound, temp);
-				if (noneDiff < fDiff && noneDiff < ooDiff)
-					printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-				else if(fDiff < ooDiff)
-					printf("ffffffffffffffffffffffffffffffffffffffffffffffffffffffff %i\n", (ooDiff - fDiff));
-				else
-					printf("oooooooooooooooooooooooooooooooooooooooooooooooooooooooo %i\n", (fDiff - ooDiff));
-				printf("size:%i\tdiff f: %.3f\tdiff oo: %.3f\tnodiff: %.3f\n", temp[0].size(), 1-fDiff, 1-ooDiff, 1-noneDiff);
+				double diffs[NUM_SOUNDS];
+				diffs[NONE] = compareFeatures(sounds[NONE], temp);
+				diffs[FF] = compareFeatures(sounds[FF], temp);
+				diffs[OO] = compareFeatures(sounds[OO], temp);
+				diffs[JJ] = compareFeatures(sounds[NONE], temp);
+				diffs[MM] = compareFeatures(sounds[NONE], temp);
+				diffs[TH] = compareFeatures(sounds[NONE], temp);
+
+				whichSound(diffs);
 			}
 			// Show image
 			//imshow("features", imgKeyPoints);

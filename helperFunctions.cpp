@@ -14,7 +14,7 @@ const double SIZE_W = .3;
 const double DIST_W = .4;
 
 #define FEATURE_THRESHHOLD 120
-#define FRAME_BLUR 4
+#define FRAME_BLUR 1
 
 enum {
 	NONE,
@@ -276,7 +276,7 @@ double compareFeatures(std::vector<std::vector<KeyPoint> > lib, std::vector<std:
 
 	// Resize feed to be the same number of frames as lib
 	if (feed.size() > lib.size()) {
-		feed.erase(feed.begin(), feed.begin() + (feed.size() - lib.size() - 1));
+		feed.erase(feed.begin(), feed.begin() + (feed.size() - lib.size()));
 	}
 
 	if (lib.size() < 1 || feed.size() < 1)
@@ -323,16 +323,17 @@ void whichSound(double diffs[]) {
 	}
 	// Now figure out which letter has that value
 	if (highest == diffs[NONE]) {
-		printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+		printf("MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM_~______\n");
 	} else if (highest == diffs[FF]) {
-		printf("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF\n");
+		printf("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF__F_____\n");
 	} else if (highest == diffs[OO]) {
-		printf("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO\n");
+		printf("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO___O____\n");
 	} else if (highest == diffs[JJ]) {
-		printf("JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ\n");
+		printf("JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ____J___\n");
 	} else if (highest == diffs[MM]) {
-		printf("MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM\n");
+		printf("MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM_____M__\n");
 	} else if (highest == diffs[TH]) {
-		printf("THTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTH\n");
+		printf("THTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTH______TH\n");
 	}
+	//printf("NONE: %.3f FF: %.3f OO: %.3f JJ: %.3f MM: %.3f TH: %.3f\n", diffs[NONE], diffs[FF], diffs[OO], diffs[JJ], diffs[MM], diffs[TH]);
 }

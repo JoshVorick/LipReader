@@ -120,8 +120,8 @@ std::vector<std::vector<KeyPoint> > getFeaturesFromVideo(string fileName, double
 		}
 		char key = (char) waitKey(1);
 		// Exit this loop on escapNonee:
-		if(key == 27)
-			break;
+		//if(key == 27)
+		//	break;
 
 		framesCompleted++;
 		printf("frame: %i\n", framesCompleted);
@@ -130,7 +130,7 @@ std::vector<std::vector<KeyPoint> > getFeaturesFromVideo(string fileName, double
 	}
 
 	faceHistory.clear();
-	outF = trimBadFeatures(outF, threshhold);
+	//outF = trimBadFeatures(outF, threshhold);
 
 	return outF;
 }
@@ -174,31 +174,37 @@ int main(int argc, const char *argv[]) {
 	std::vector<Rect> faceHistory;
 	
 
-	sounds[NONE] = getFeaturesFromVideo("NONE.avi", 0.75, fn_haar);
+	sounds[NONE] = getFeaturesFromVideo("NONE.avi", 0.85, fn_haar);
 	printf("sounds[NONE] size: %i\n", sounds[NONE][0].size());
 
-	sounds[FF] = getFeaturesFromVideo("F1.avi", 0.5, fn_haar);
+	sounds[FF] = getFeaturesFromVideo("F1.avi", 0.53, fn_haar);
 	printf("sounds[FF] size: %i\n", sounds[FF][0].size());
 
-	sounds[OO] = getFeaturesFromVideo("OO1.avi", 0.4, fn_haar);
+	sounds[OO] = getFeaturesFromVideo("OO1.avi", 0.57, fn_haar);
 	printf("sounds[OO] size: %i\n", sounds[OO][0].size());
 
-	sounds[JJ] = getFeaturesFromVideo("J1.avi", 0., fn_haar);
+	sounds[JJ] = getFeaturesFromVideo("J1.avi", 0.4, fn_haar);
 	printf("sounds[JJ] size: %i\n", sounds[JJ][0].size());
 
-	sounds[MM] = getFeaturesFromVideo("M1.avi", 0., fn_haar);
+	sounds[MM] = getFeaturesFromVideo("M1.avi", 0.4, fn_haar);
 	printf("sounds[MM] size: %i\n", sounds[MM][0].size());
 
-	sounds[TH] = getFeaturesFromVideo("TH1.avi", 0., fn_haar);
+	sounds[TH] = getFeaturesFromVideo("TH1.avi", 0.4, fn_haar);
 	printf("sounds[TH] size: %i\n", sounds[TH][0].size());
 
 	// Vector of vectors to story features of past frames
 	std::vector<std::vector<KeyPoint> > featureHistory;
 
 	// Load webcam image
-	VideoCapture capCam("TEST.avi");
+	VideoCapture capCam(0);
+	// Check if we can use this device at all:
+	if(!capCam.isOpened()) {
+		cout << "Couldn't open webcam" << endl;
+		return -1;
+	}
 	capCam >> frame;
 	while(frame.data) {
+		printf("loop start\n");
 		frames.push_back(frame);
 		if (frames.size() > FRAME_BLUR)
 			frames.erase(frames.begin());
@@ -224,6 +230,7 @@ int main(int argc, const char *argv[]) {
 			if (faces[i].area() > face.area()) {
 				face = faces[i];
 			}
+			rectangle(original, faces[i], CV_RGB(0,255,0), 1);
 		}
 		// Add to list of faces
 		faceHistory.push_back(face);
@@ -259,7 +266,7 @@ int main(int argc, const char *argv[]) {
 		cv::resize(frame(avg_face), face_resized, Size(im_width, im_height), 1.0, 1.0, INTER_CUBIC);
 		// Now perform the prediction, see how easy that is:
 		// First of all draw a green rectangle around the detected face:
-		rectangle(original, avg_face, CV_RGB(0, 255,0), 1);
+		rectangle(original, avg_face, CV_RGB(255,100,0), 1);
 
 		// Show the result:
 		imshow("face_recognizer", original);
@@ -267,7 +274,9 @@ int main(int argc, const char *argv[]) {
 			//Create feature detector
 			SurfFeatureDetector detector( FEATURE_THRESHHOLD );
 			std::vector<KeyPoint> keyPoints;
-
+			
+			//Make the img gray and detect features
+			//cvtColor(face_resized(lips), gray, CV_BGR2GRAY);
 			detector.detect( face_resized(lips), keyPoints );
 
 			if (featureHistory.size() > 0) {
@@ -282,7 +291,7 @@ int main(int argc, const char *argv[]) {
 			std::vector<std::vector<KeyPoint> > temp = trimBadFeatures(featureHistory, .7);
 			// If there aren't enough features for tracking, lower the threshhold
 			float threshhold = .65;
-			while (temp.size() < 1 || (temp[0].size() < 10 && threshhold > 0)) {
+			while ((temp.size() < 1 || temp[0].size() < 10) && threshhold > 0) {
 				temp = trimBadFeatures(featureHistory, threshhold);
 				threshhold -= .05;
 			}
@@ -292,21 +301,21 @@ int main(int argc, const char *argv[]) {
 			drawKeypoints( face_resized(lips), keyPoints, imgKeyPoints, Scalar::all(-1), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
 			if (temp.size() > 0) {
 				drawKeypoints( face_resized(lips), temp[0], imgTrimmed, Scalar::all(-1), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-				imshow("trimmed", imgTrimmed);
+				imshow("trimmed  ", imgTrimmed);
 
 				// Calc and print difference
 				double diffs[NUM_SOUNDS];
 				diffs[NONE] = compareFeatures(sounds[NONE], temp);
 				diffs[FF] = compareFeatures(sounds[FF], temp);
 				diffs[OO] = compareFeatures(sounds[OO], temp);
-				diffs[JJ] = compareFeatures(sounds[NONE], temp);
-				diffs[MM] = compareFeatures(sounds[NONE], temp);
-				diffs[TH] = compareFeatures(sounds[NONE], temp);
+				diffs[JJ] = compareFeatures(sounds[JJ], temp);
+				diffs[MM] = compareFeatures(sounds[MM], temp);
+				diffs[TH] = compareFeatures(sounds[TH], temp);
 
 				whichSound(diffs);
 			}
 			// Show image
-			//imshow("features", imgKeyPoints);
+			imshow("features", imgKeyPoints);
 		}
 		// And display it:
 		char key = (char) waitKey(20);

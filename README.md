@@ -16,12 +16,13 @@ becomes this:
 * **Trims video to just lips**
 * **Detects features on lips**
 * **Tracks features across 18 frames**
-* **Loads example video of 'f' viseme**
+* **Loads example video of 'f', 'o', 'j', 'm', and 'th' visemes**
+* **Trims tracked features to the ones that persist for multiple frames**
+* **Brute force comparison to guess which sound is being said**
 
 ### To be added:
-* **Trim tracked features to just features that are present across most frames**
-* **Use winner-take-all hash to make matrices of features more manageable**
-* **Compare features from live feed against known visemes to guess at what's being said**
+* **Get higher resolution video for better feature detection**
 * **Load more visemes**
+* **Get each viseme at a different speed (people talk at different rates)**
+* **Turn guessed visemes into guessed words**
 
-Sorry this readme isn't the best :/
